@@ -1,4 +1,11 @@
-FROM node:16
+FROM amazonlinux:2
+
+# Install dependencies
+RUN yum -y update && \
+ yum -y install curl && \
+ curl -sL https://rpm.nodesource.com/setup_16.x | bash -
+
+RUN yum install -y nodejs
 
 # Create app directory
 WORKDIR /usr/src/app
