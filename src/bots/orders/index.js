@@ -1,5 +1,5 @@
 const axios = require('axios');
-const ORDERS_SERVICE_URL = 'http://cdkst-order-7hx7xl2l0nte-1948293795.us-east-1.elb.amazonaws.com/orders'
+const ORDERS_SERVICE_URL = 'http://CdkSt-Order-G2YRUJMED888-efb062ea62d979ab.elb.us-east-1.amazonaws.com/orders'
 
 
 
