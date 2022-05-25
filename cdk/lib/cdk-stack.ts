@@ -3,7 +3,8 @@ import { Construct } from 'constructs';
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as ecs_patterns from "aws-cdk-lib/aws-ecs-patterns";
-// import * as apigateway from "aws-cdk-lib/aws-apigateway";
+import * as apigateway from '@aws-cdk/aws-apigatewayv2-alpha';
+import { HttpNlbIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
 
 export class CdkStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -55,64 +56,49 @@ export class CdkStack extends Stack {
       ec2.Peer.ipv4('10.0.0.0/16'), ec2.Port.tcp(3000), 'NLB'
     );
 
-    //
-    // Order Bot Service
-    //
-    const orderBotTaskDefinition = new ecs.FargateTaskDefinition(this, 'orderBot', {
-      memoryLimitMiB: 512,
-      cpu: 256,
-    });
-    const orderBotContainer = orderBotTaskDefinition.addContainer("orderBot", {
-      image: ecs.ContainerImage.fromAsset("/Users/ormarcos/dev/aws-containers-labs/src/bots/orders"),
-      logging: new ecs.AwsLogDriver({
-        streamPrefix: 'orderBot'
-      })
-    });
-    const orderBotService = new ecs.FargateService(this, 'orderBotService', {
-      cluster: cluster,
-      taskDefinition: orderBotTaskDefinition,
-      desiredCount: 1,
-    });
-
-    //
-    // Deal Bot Service
-    //
-    const dealBotTaskDefinition = new ecs.FargateTaskDefinition(this, 'dealBot', {
-      memoryLimitMiB: 512,
-      cpu: 256,
-    });
-    const dealBotContainer = dealBotTaskDefinition.addContainer("dealBot", {
-      image: ecs.ContainerImage.fromAsset("/Users/ormarcos/dev/aws-containers-labs/src/bots/deals"),
-      logging: new ecs.AwsLogDriver({
-        streamPrefix: 'dealBot'
-      })
-    });
-    const dealBotService = new ecs.FargateService(this, 'dealBotService', {
-      cluster: cluster,
-      taskDefinition: dealBotTaskDefinition,
-      desiredCount: 1,
-    });
-
-    // // Acme Bots API
-    // const acmeStore = new apigateway.RestApi(this, 'acme-store');
-    // acmeStore.root.addMethod('GET');
-    // const orders = acmeStore.root.addResource('orders');
-    // orders.addMethod('GET');
-    // const order = orders.addResource('{order_id}');
-    // order.addMethod('GET');
-
-    // const link = new apigateway.VpcLink(this, 'link', {
-    //   targets: [ordersService.loadBalancer],
+    // //
+    // // Order Bot Service
+    // //
+    // const orderBotTaskDefinition = new ecs.FargateTaskDefinition(this, 'orderBot', {
+    //   memoryLimitMiB: 512,
+    //   cpu: 256,
     // });
-    
-    // const integration = new apigateway.Integration({
-    //   type: apigateway.IntegrationType.HTTP_PROXY,
-    //   options: {
-    //     connectionType: apigateway.ConnectionType.VPC_LINK,
-    //     vpcLink: link,
-    //   },
+    // const orderBotContainer = orderBotTaskDefinition.addContainer("orderBot", {
+    //   image: ecs.ContainerImage.fromAsset("/Users/ormarcos/dev/aws-containers-labs/src/bots/orders"),
+    //   logging: new ecs.AwsLogDriver({
+    //     streamPrefix: 'orderBot'
+    //   })
+    // });
+    // const orderBotService = new ecs.FargateService(this, 'orderBotService', {
+    //   cluster: cluster,
+    //   taskDefinition: orderBotTaskDefinition,
+    //   desiredCount: 1,
     // });
 
+    // //
+    // // Deal Bot Service
+    // //
+    // const dealBotTaskDefinition = new ecs.FargateTaskDefinition(this, 'dealBot', {
+    //   memoryLimitMiB: 512,
+    //   cpu: 256,
+    // });
+    // const dealBotContainer = dealBotTaskDefinition.addContainer("dealBot", {
+    //   image: ecs.ContainerImage.fromAsset("/Users/ormarcos/dev/aws-containers-labs/src/bots/deals"),
+    //   logging: new ecs.AwsLogDriver({
+    //     streamPrefix: 'dealBot'
+    //   })
+    // });
+    // const dealBotService = new ecs.FargateService(this, 'dealBotService', {
+    //   cluster: cluster,
+    //   taskDefinition: dealBotTaskDefinition,
+    //   desiredCount: 1,
+    // });
+
+    // Acme Bots API
+    const httpApi = new apigateway.HttpApi(this, 'AcmeStore', {
+      disableExecuteApiEndpoint: false,
+      defaultIntegration: new HttpNlbIntegration('DefaultIntegration', ordersService.listener),
+    });
 
   }
 }
