@@ -5,6 +5,7 @@ import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as ecs_patterns from "aws-cdk-lib/aws-ecs-patterns";
 import * as apigateway from '@aws-cdk/aws-apigatewayv2-alpha';
 import { HttpNlbIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
+import { HttpIamAuthorizer, HttpUserPoolAuthorizer } from '@aws-cdk/aws-apigatewayv2-authorizers-alpha';
 
 export class CdkStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -95,9 +96,53 @@ export class CdkStack extends Stack {
     // });
 
     // Acme Bots API
+
+    const ordersIntegration = new HttpNlbIntegration('OrdersIntegration', ordersService.listener);
+    const dealsIntegration = new HttpNlbIntegration('DealsIntegration', dealsService.listener);
+    const authorizer = new HttpIamAuthorizer();
+
     const httpApi = new apigateway.HttpApi(this, 'AcmeStore', {
       disableExecuteApiEndpoint: false,
-      defaultIntegration: new HttpNlbIntegration('DefaultIntegration', ordersService.listener),
+      defaultIntegration: ordersIntegration,
+      defaultAuthorizer: authorizer,
+    });
+    
+
+    httpApi.addRoutes({
+      path: '/',
+      methods: [ apigateway.HttpMethod.GET ],
+      integration: ordersIntegration,
+      authorizer: new apigateway.HttpNoneAuthorizer,
+    });
+    httpApi.addRoutes({
+      path: '/orders',
+      methods: [ apigateway.HttpMethod.GET ],
+      integration: ordersIntegration
+    });
+    httpApi.addRoutes({
+      path: '/orders/{orderID}',
+      methods: [ apigateway.HttpMethod.GET ],
+      integration: ordersIntegration
+    });
+    httpApi.addRoutes({
+      path: '/orders',
+      methods: [ apigateway.HttpMethod.POST ],
+      integration: ordersIntegration
+    });
+    httpApi.addRoutes({
+      path: '/deals',
+      methods: [ apigateway.HttpMethod.GET ],
+      integration: dealsIntegration,
+    });
+    httpApi.addRoutes({
+      path: '/deals/{dealID}',
+      methods: [ apigateway.HttpMethod.GET ],
+      integration: dealsIntegration
+    });
+    httpApi.addRoutes({
+      path: '/deals',
+      methods: [ apigateway.HttpMethod.POST ],
+      integration: dealsIntegration
     });
 
   }

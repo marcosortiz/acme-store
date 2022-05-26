@@ -39,7 +39,7 @@ app.get('/deals', function (req, res) {
     });
 });
 
-app.get('/deal/:id', function (req, res) {
+app.get('/deals/:id', function (req, res) {
     const id = req.params.id
     res.json({
         deal: {

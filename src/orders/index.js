@@ -41,7 +41,7 @@ app.get('/orders', function (req, res) {
     });
 });
 
-app.get('/order/:id', function (req, res) {
+app.get('/orders/:id', function (req, res) {
     const id = req.params.id
     res.json({
         order:{
