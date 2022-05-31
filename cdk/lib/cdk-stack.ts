@@ -1,25 +1,36 @@
-import { Stack, StackProps } from 'aws-cdk-lib';
+import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as ecs_patterns from "aws-cdk-lib/aws-ecs-patterns";
 import * as apigateway from '@aws-cdk/aws-apigatewayv2-alpha';
+import * as cognito from 'aws-cdk-lib/aws-cognito';
+import { IdentityPool, UserPoolAuthenticationProvider } from '@aws-cdk/aws-cognito-identitypool-alpha';
 import { HttpNlbIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
 import { HttpIamAuthorizer, HttpUserPoolAuthorizer } from '@aws-cdk/aws-apigatewayv2-authorizers-alpha';
+import { Role, PolicyStatement, WebIdentityPrincipal, Effect } from 'aws-cdk-lib/aws-iam';
 
 export class CdkStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
+    //-------------------------------------------------------------------------
+    // VPC
+    //-------------------------------------------------------------------------
     const vpc = new ec2.Vpc(this, "MyVpc", {
       maxAzs: 3 // Default is all AZs in region
     });
 
+    //-------------------------------------------------------------------------
+    // ECS Cluster
+    //-------------------------------------------------------------------------
     const cluster = new ecs.Cluster(this, "MyCluster", {
       vpc: vpc
     });
 
+    //-------------------------------------------------------------------------
     // Orders service
+    //-------------------------------------------------------------------------
     const ordersService = new ecs_patterns.NetworkLoadBalancedFargateService(this, 'Orders', {
       cluster: cluster,
       memoryLimitMiB: 1024,
@@ -38,7 +49,9 @@ export class CdkStack extends Stack {
       ec2.Peer.ipv4('10.0.0.0/16'), ec2.Port.tcp(3000), 'NLB'
     );
 
+    //-------------------------------------------------------------------------
     // Deals service
+    //-------------------------------------------------------------------------
     const dealsService = new ecs_patterns.NetworkLoadBalancedFargateService(this, 'Deals', {
       cluster: cluster,
       memoryLimitMiB: 1024,
@@ -95,8 +108,9 @@ export class CdkStack extends Stack {
     //   desiredCount: 1,
     // });
 
+    //-------------------------------------------------------------------------
     // Acme Bots API
-
+    //-------------------------------------------------------------------------
     const ordersIntegration = new HttpNlbIntegration('OrdersIntegration', ordersService.listener);
     const dealsIntegration = new HttpNlbIntegration('DealsIntegration', dealsService.listener);
     const authorizer = new HttpIamAuthorizer();
@@ -144,6 +158,67 @@ export class CdkStack extends Stack {
       methods: [ apigateway.HttpMethod.POST ],
       integration: dealsIntegration
     });
+
+    //-------------------------------------------------------------------------
+    // Cognito User Pool and Identity Pool
+    //-------------------------------------------------------------------------
+    const userPool = new cognito.UserPool(this, 'acmestoreUserPool', {
+      // selfSignUpEnabled: false,
+      // signInAliases: { username: true, email: true },
+      // autoVerify: { email: true, phone: true },
+      removalPolicy: RemovalPolicy.DESTROY
+    });
+    const identityPool = new IdentityPool(this, 'acmestoreIdentityPool', {
+      authenticationProviders: {
+        userPools: [new UserPoolAuthenticationProvider({ userPool })],
+      },
+    });
+
+    const adminUserRole = new Role(this, 'AdminUserRole', {
+      assumedBy: new WebIdentityPrincipal('cognito-identity.amazonaws.com', {
+        'StringEquals': {
+          'cognito-identity.amazonaws.com:aud': identityPool.identityPoolId,
+         },
+        'ForAnyValue:StringLike': {
+          'cognito-identity.amazonaws.com:amr': 'authenticated',
+        },
+      })
+    });
+    adminUserRole.addToPolicy(new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: ['execute-api:Invoke'],
+      resources: [`arn:aws:execute-api:${this.region}:${this.account}:${httpApi.httpApiId}/*/*/*`],
+    }));
+    const adminUserPoolGroup = new cognito.CfnUserPoolGroup(this, 'AdminUserPoolGroup', {
+      userPoolId: userPool.userPoolId,
+      description: 'Can Access deals and orders API',
+      groupName: 'Admin',
+      precedence: 1,
+      roleArn: adminUserRole.roleArn,
+    });
+    const dealsUserRole = new Role(this, 'DealsUserRole', {
+      assumedBy: new WebIdentityPrincipal('cognito-identity.amazonaws.com', {
+        'StringEquals': {
+          'cognito-identity.amazonaws.com:aud': identityPool.identityPoolId,
+         },
+        'ForAnyValue:StringLike': {
+          'cognito-identity.amazonaws.com:amr': 'authenticated',
+        },
+      })
+    });
+    dealsUserRole.addToPolicy(new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: ['execute-api:Invoke'],
+      resources: [`arn:aws:execute-api:${this.region}:${this.account}:${httpApi.httpApiId}/*/*/deals`],
+    }));
+    const readUserPoolGroup = new cognito.CfnUserPoolGroup(this, 'ReadUserPoolGroup', {
+      userPoolId: userPool.userPoolId,
+      description: 'Can only access deals API',
+      groupName: 'Deals',
+      precedence: 2,
+      roleArn: dealsUserRole.roleArn,
+    });
+
 
   }
 }
