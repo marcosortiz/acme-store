@@ -1,4 +1,4 @@
-import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
+import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
@@ -163,9 +163,6 @@ export class CdkStack extends Stack {
     // Cognito User Pool and Identity Pool
     //-------------------------------------------------------------------------
     const userPool = new cognito.UserPool(this, 'acmestoreUserPool', {
-      // selfSignUpEnabled: false,
-      // signInAliases: { username: true, email: true },
-      // autoVerify: { email: true, phone: true },
       removalPolicy: RemovalPolicy.DESTROY
     });
     const identityPool = new IdentityPool(this, 'acmestoreIdentityPool', {
@@ -173,6 +170,7 @@ export class CdkStack extends Stack {
         userPools: [new UserPoolAuthenticationProvider({ userPool })],
       },
     });
+    const cognitoAppClientId = userPool.addClient('acmestore');
 
     const adminUserRole = new Role(this, 'AdminUserRole', {
       assumedBy: new WebIdentityPrincipal('cognito-identity.amazonaws.com', {
@@ -220,5 +218,23 @@ export class CdkStack extends Stack {
     });
 
 
+    //-------------------------------------------------------------------------
+    // Adding CDK Stack outputs
+    //-------------------------------------------------------------------------
+    new CfnOutput(this, 'userPoolId', {
+      value: userPool.userPoolId,
+      description: 'The Congnito User Pool Id.',
+      exportName: 'userPoolId',
+    });
+    new CfnOutput(this, 'identityPoolId', {
+      value: identityPool.identityPoolId,
+      description: 'The Congnito Identity Pool Id.',
+      exportName: 'identityPoolId',
+    });
+    new CfnOutput(this, 'ClientId', {
+      value: cognitoAppClientId.userPoolClientId,
+      description: 'The Congnito Identity Pool App Client Id.',
+      exportName: 'ClientId',
+    });
   }
 }
