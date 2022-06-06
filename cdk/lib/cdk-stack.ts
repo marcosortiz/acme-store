@@ -2,13 +2,14 @@ import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
+import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as ecs_patterns from "aws-cdk-lib/aws-ecs-patterns";
 import * as apigateway from '@aws-cdk/aws-apigatewayv2-alpha';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import { IdentityPool, UserPoolAuthenticationProvider } from '@aws-cdk/aws-cognito-identitypool-alpha';
 import { HttpNlbIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
-import { HttpIamAuthorizer, HttpUserPoolAuthorizer } from '@aws-cdk/aws-apigatewayv2-authorizers-alpha';
-import { Role, PolicyStatement, WebIdentityPrincipal, Effect } from 'aws-cdk-lib/aws-iam';
+import { HttpUserPoolAuthorizer, HttpJwtAuthorizer } from '@aws-cdk/aws-apigatewayv2-authorizers-alpha';
+import * as path from 'path';
 
 export class CdkStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -21,12 +22,14 @@ export class CdkStack extends Stack {
       maxAzs: 3 // Default is all AZs in region
     });
 
+    
     //-------------------------------------------------------------------------
     // ECS Cluster
     //-------------------------------------------------------------------------
     const cluster = new ecs.Cluster(this, "MyCluster", {
       vpc: vpc
     });
+
 
     //-------------------------------------------------------------------------
     // Orders service
@@ -49,6 +52,7 @@ export class CdkStack extends Stack {
       ec2.Peer.ipv4('10.0.0.0/16'), ec2.Port.tcp(3000), 'NLB'
     );
 
+
     //-------------------------------------------------------------------------
     // Deals service
     //-------------------------------------------------------------------------
@@ -69,6 +73,7 @@ export class CdkStack extends Stack {
     dealsService.service.connections.securityGroups[0].addIngressRule(
       ec2.Peer.ipv4('10.0.0.0/16'), ec2.Port.tcp(3000), 'NLB'
     );
+
 
     // //
     // // Order Bot Service
@@ -108,40 +113,87 @@ export class CdkStack extends Stack {
     //   desiredCount: 1,
     // });
 
+
+    //-------------------------------------------------------------------------
+    // Cognito User Pool and Identity Pool
+    //-------------------------------------------------------------------------
+    const userPool = new cognito.UserPool(this, 'acmestoreUserPool', {
+      removalPolicy: RemovalPolicy.DESTROY
+    });
+    const cognitoAppClientId = userPool.addClient('acmestore');
+    const identityPool = new IdentityPool(this, 'acmestoreIdentityPool', {
+      allowClassicFlow: false,
+      authenticationProviders: {
+        userPools: [new UserPoolAuthenticationProvider({ 
+          userPool: userPool,
+          userPoolClient: cognitoAppClientId,
+        })],
+      },
+    });
+
+    const adminUserPoolGroup = new cognito.CfnUserPoolGroup(this, 'AdminUserPoolGroup', {
+      userPoolId: userPool.userPoolId,
+      description: 'Can Access deals and orders API',
+      groupName: 'Admin',
+      precedence: 1,
+    });
+    const readUserPoolGroup = new cognito.CfnUserPoolGroup(this, 'ReadUserPoolGroup', {
+      userPoolId: userPool.userPoolId,
+      description: 'Can only access deals API',
+      groupName: 'Deals',
+      precedence: 2,
+    });
+
+    const preTokenAuthLambdaFn = new lambda.Function(this, 'AcmeStorePreTokenAuth', {
+      runtime: lambda.Runtime.NODEJS_16_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '..', '..', 'src', 'preAuthTriggerLambda')),
+    });
+    userPool.addTrigger(cognito.UserPoolOperation.PRE_TOKEN_GENERATION, preTokenAuthLambdaFn);
+
+
     //-------------------------------------------------------------------------
     // Acme Bots API
     //-------------------------------------------------------------------------
     const ordersIntegration = new HttpNlbIntegration('OrdersIntegration', ordersService.listener);
     const dealsIntegration = new HttpNlbIntegration('DealsIntegration', dealsService.listener);
-    const authorizer = new HttpIamAuthorizer();
+    const httpUserPoolAuth = new HttpUserPoolAuthorizer('AcmeStoreJwtAuth', userPool, {
+      identitySource: ['$request.header.Authorization'],
+      userPoolClients: [cognitoAppClientId]
+    });
+    const readOnlyScope = `${readUserPoolGroup.groupName}-${cognitoAppClientId.userPoolClientId}`;
+    const adminScope = `${adminUserPoolGroup.groupName}-${cognitoAppClientId.userPoolClientId}`;
 
     const httpApi = new apigateway.HttpApi(this, 'AcmeStore', {
       disableExecuteApiEndpoint: false,
       defaultIntegration: ordersIntegration,
-      defaultAuthorizer: authorizer,
+      defaultAuthorizer: httpUserPoolAuth,
+      defaultAuthorizationScopes: [readOnlyScope, adminScope],
     });
-    
-
     httpApi.addRoutes({
       path: '/',
       methods: [ apigateway.HttpMethod.GET ],
       integration: ordersIntegration,
       authorizer: new apigateway.HttpNoneAuthorizer,
+      authorizationScopes: []
     });
     httpApi.addRoutes({
       path: '/orders',
       methods: [ apigateway.HttpMethod.GET ],
-      integration: ordersIntegration
+      integration: ordersIntegration,
+      authorizationScopes: [adminScope],
     });
     httpApi.addRoutes({
       path: '/orders/{orderID}',
       methods: [ apigateway.HttpMethod.GET ],
-      integration: ordersIntegration
+      integration: ordersIntegration,
+      authorizationScopes: [adminScope],
     });
     httpApi.addRoutes({
       path: '/orders',
       methods: [ apigateway.HttpMethod.POST ],
-      integration: ordersIntegration
+      integration: ordersIntegration,
+      authorizationScopes: [adminScope],
     });
     httpApi.addRoutes({
       path: '/deals',
@@ -157,64 +209,6 @@ export class CdkStack extends Stack {
       path: '/deals',
       methods: [ apigateway.HttpMethod.POST ],
       integration: dealsIntegration
-    });
-
-    //-------------------------------------------------------------------------
-    // Cognito User Pool and Identity Pool
-    //-------------------------------------------------------------------------
-    const userPool = new cognito.UserPool(this, 'acmestoreUserPool', {
-      removalPolicy: RemovalPolicy.DESTROY
-    });
-    const identityPool = new IdentityPool(this, 'acmestoreIdentityPool', {
-      authenticationProviders: {
-        userPools: [new UserPoolAuthenticationProvider({ userPool })],
-      },
-    });
-    const cognitoAppClientId = userPool.addClient('acmestore');
-
-    const adminUserRole = new Role(this, 'AdminUserRole', {
-      assumedBy: new WebIdentityPrincipal('cognito-identity.amazonaws.com', {
-        'StringEquals': {
-          'cognito-identity.amazonaws.com:aud': identityPool.identityPoolId,
-         },
-        'ForAnyValue:StringLike': {
-          'cognito-identity.amazonaws.com:amr': 'authenticated',
-        },
-      })
-    });
-    adminUserRole.addToPolicy(new PolicyStatement({
-      effect: Effect.ALLOW,
-      actions: ['execute-api:Invoke'],
-      resources: [`arn:aws:execute-api:${this.region}:${this.account}:${httpApi.httpApiId}/*/*/*`],
-    }));
-    const adminUserPoolGroup = new cognito.CfnUserPoolGroup(this, 'AdminUserPoolGroup', {
-      userPoolId: userPool.userPoolId,
-      description: 'Can Access deals and orders API',
-      groupName: 'Admin',
-      precedence: 1,
-      roleArn: adminUserRole.roleArn,
-    });
-    const dealsUserRole = new Role(this, 'DealsUserRole', {
-      assumedBy: new WebIdentityPrincipal('cognito-identity.amazonaws.com', {
-        'StringEquals': {
-          'cognito-identity.amazonaws.com:aud': identityPool.identityPoolId,
-         },
-        'ForAnyValue:StringLike': {
-          'cognito-identity.amazonaws.com:amr': 'authenticated',
-        },
-      })
-    });
-    dealsUserRole.addToPolicy(new PolicyStatement({
-      effect: Effect.ALLOW,
-      actions: ['execute-api:Invoke'],
-      resources: [`arn:aws:execute-api:${this.region}:${this.account}:${httpApi.httpApiId}/*/*/deals`],
-    }));
-    const readUserPoolGroup = new cognito.CfnUserPoolGroup(this, 'ReadUserPoolGroup', {
-      userPoolId: userPool.userPoolId,
-      description: 'Can only access deals API',
-      groupName: 'Deals',
-      precedence: 2,
-      roleArn: dealsUserRole.roleArn,
     });
 
 
