@@ -1,1 +1,1 @@
-# aws-containers-labs
+# Acme Store
