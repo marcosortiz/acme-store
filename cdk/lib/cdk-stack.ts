@@ -2,8 +2,9 @@ import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
-import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as ecs_patterns from "aws-cdk-lib/aws-ecs-patterns";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as rds from 'aws-cdk-lib/aws-rds';
 import * as apigateway from '@aws-cdk/aws-apigatewayv2-alpha';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import { IdentityPool, UserPoolAuthenticationProvider } from '@aws-cdk/aws-cognito-identitypool-alpha';
@@ -21,6 +22,32 @@ export class CdkStack extends Stack {
     const vpc = new ec2.Vpc(this, "MyVpc", {
       maxAzs: 3 // Default is all AZs in region
     });
+    const bastionSecurityGroup = new ec2.SecurityGroup(this, 'auroraClients', {
+      vpc,
+      description: 'Any client app that needs to access Aurora DB',
+      allowAllOutbound: true   // Can be set to false
+    });
+
+    const host = new ec2.BastionHostLinux(this, 'BastionHost', { 
+      vpc: vpc,
+      securityGroup: bastionSecurityGroup,
+    });
+    
+
+    //-------------------------------------------------------------------------
+    // Aurora Cluster
+    //-------------------------------------------------------------------------
+    const auroraCluster = new rds.DatabaseCluster(this, 'AcmeStoreAurora', {
+      engine: rds.DatabaseClusterEngine.auroraPostgres({ version: rds.AuroraPostgresEngineVersion.VER_13_6 }),
+      credentials: rds.Credentials.fromGeneratedSecret('acmestoreadmin'), // Optional - will default to 'admin' username and generated password
+      instanceProps: {
+        vpcSubnets: {
+          subnetType: ec2.SubnetType.PRIVATE_WITH_NAT,
+        },
+        vpc,
+      },
+    });
+    auroraCluster.connections.allowFrom(bastionSecurityGroup, ec2.Port.tcp(5432));
 
     
     //-------------------------------------------------------------------------
@@ -215,20 +242,43 @@ export class CdkStack extends Stack {
     //-------------------------------------------------------------------------
     // Adding CDK Stack outputs
     //-------------------------------------------------------------------------
-    new CfnOutput(this, 'userPoolId', {
+    new CfnOutput(this, 'cognitoUserPoolId', {
       value: userPool.userPoolId,
       description: 'The Congnito User Pool Id.',
-      exportName: 'userPoolId',
+      exportName: 'cognitoUserPoolId',
     });
-    new CfnOutput(this, 'identityPoolId', {
+    new CfnOutput(this, 'cognitoIdentityPoolId', {
       value: identityPool.identityPoolId,
       description: 'The Congnito Identity Pool Id.',
-      exportName: 'identityPoolId',
+      exportName: 'cognitoIdentityPoolId',
     });
-    new CfnOutput(this, 'ClientId', {
+    new CfnOutput(this, 'cognitoClientId', {
       value: cognitoAppClientId.userPoolClientId,
       description: 'The Congnito Identity Pool App Client Id.',
-      exportName: 'ClientId',
+      exportName: 'cognitoClientId',
     });
+    new CfnOutput(this, 'auroraClusterEndpoint', {
+      value: auroraCluster.clusterEndpoint.hostname,
+      description: 'The Aurora cluster endpoint.',
+      exportName: 'auroraClusterEndpoint',
+    });
+    new CfnOutput(this, 'auroraClusterPort', {
+      value: `${auroraCluster.clusterEndpoint.port}`,
+      description: 'The Aurora cluster port.',
+      exportName: 'auroraClusterPort',
+    });
+    new CfnOutput(this, 'auroraSecret', {
+      value: `${auroraCluster.secret?.secretName}`,
+      description: 'Secret Managers secret holding Aurora credentials.',
+      exportName: 'auroraSecret',
+    });
+    new CfnOutput(this, 'apiEndpoint', {
+      value: httpApi.apiEndpoint,
+      description: 'The HTTP API public endpoint.',
+      exportName: 'apiEndpoint',
+    });
+    
+
+    
   }
 }
