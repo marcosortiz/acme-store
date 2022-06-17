@@ -1,12 +1,10 @@
-
 import { Amplify, Auth, API } from 'aws-amplify';
 import config from 'config';
-
-const REGION = config.get("aws.REGION");
-const USER_POOL_ID = config.get("cognito.USER_POOL_ID");
-const CLIENT_ID = config.get("cognito.CLIENT_ID");
-const IDENTITY_POOL_ID = config.get("cognito.IDENTITY_POOL_ID");
-const API_ENDPOINT = config.get("api.ENDPOINT");
+const REGION = config.get("aws.region");
+const USER_POOL_ID = config.get("cognito.userPoolId");
+const CLIENT_ID = config.get("cognito.ClientId");
+const IDENTITY_POOL_ID = config.get("cognito.identityPoolId");
+const API_ENDPOINT = config.get("api.endpoint");
 
 
 Amplify.configure({
@@ -25,8 +23,8 @@ Amplify.configure({
         custom_header: async () => { 
           // return { Authorization : 'token' } 
           // Alternatively, with Cognito User Pools use this:
-          // return { Authorization: `Bearer ${(await Auth.currentSession()).getAccessToken().getJwtToken()}` }
-          return { Authorization: `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}` }
+          return { Authorization: `Bearer ${(await Auth.currentSession()).getAccessToken().getJwtToken()}` }
+          // return { Authorization: `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}` }
         }
       }
     ]
@@ -64,35 +62,40 @@ async function inspectCurrentSession() {
   });
 }
 
-async function getDeals() {
-  try {
-    console.log('Getting deals ...')
-    return API.get('AcmeStore', '/deals');
-  } catch (error) {
-    console.log('Error getting deals.', error);
+function sendApiGetRequest(path) {
+  return API.get('AcmeStore', path);
+}
+
+async function acmeStoreGet(path) {
+  try{
+    console.log(`Getting ${path} ...`)
+    const resp = await sendApiGetRequest(path);
+    console.log(resp);
+  } catch (err) {
+    let code = err.response.status;
+    let text = err.response.statusText;
+    console.error(`Error getting ${path}: ${code} - ${text}`);
   }
+}
+
+async function getDeals() {
+  await acmeStoreGet('/deals'); 
 }
 
 async function getOrders() {
-  try {
-    console.log('Getting orders ...')
-    return API.get('AcmeStore', '/orders');
-  } catch (error) {
-    console.log('Error getting orders.', error);
-  }
+  await acmeStoreGet('/orders'); 
 }
 
-
-// let adminUsername = config.get("users.admin.username");
-// let adminUserPassword = config.get("users.admin.password");
-// await signIn(adminUsername, adminUserPassword);
-// console.log(await getDeals());
-// console.log(await getOrders());
-// await signOut(adminUsername);
-// console.log('--------------------------------------------------------------------------------');
+let adminUsername = config.get("users.admin.username");
+let adminUserPassword = config.get("users.admin.password");
+await signIn(adminUsername, adminUserPassword);
+await getDeals();
+await getOrders();
+await signOut(adminUsername);
+console.log('--------------------------------------------------------------------------------');
 let readOnlyUsername = config.get("users.readonly.username");
 let readOnlyUserPassword = config.get("users.readonly.password");
 await signIn(readOnlyUsername, readOnlyUserPassword);
-console.log(await getDeals());
-console.log(await getOrders());
+await getDeals();
+await getOrders();
 await signOut(readOnlyUsername);
