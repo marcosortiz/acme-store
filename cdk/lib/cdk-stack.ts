@@ -7,6 +7,7 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as apigateway from '@aws-cdk/aws-apigatewayv2-alpha';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { IdentityPool, UserPoolAuthenticationProvider } from '@aws-cdk/aws-cognito-identitypool-alpha';
 import { HttpNlbIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
 import { HttpUserPoolAuthorizer, HttpJwtAuthorizer } from '@aws-cdk/aws-apigatewayv2-authorizers-alpha';
@@ -171,6 +172,9 @@ export class CdkStack extends Stack {
       precedence: 2,
     });
 
+    const adminUsersecret = new secretsmanager.Secret(this, 'adminUserSecret');
+    const readOnlyUsersecret = new secretsmanager.Secret(this, 'readOnlyUserSecret');
+
     const preTokenAuthLambdaFn = new lambda.Function(this, 'AcmeStorePreTokenAuth', {
       runtime: lambda.Runtime.NODEJS_16_X,
       handler: 'index.handler',
@@ -276,6 +280,26 @@ export class CdkStack extends Stack {
       value: httpApi.apiEndpoint,
       description: 'The HTTP API public endpoint.',
       exportName: 'apiEndpoint',
+    });
+    new CfnOutput(this, 'cognitoAdminUserPoolGroup', {
+      value: `${adminUserPoolGroup.groupName}`,
+      description: 'Cognito user pool admin group name.',
+      exportName: 'cognitoAdminUserPoolGroup',
+    });
+    new CfnOutput(this, 'cognitoReadOnlyUserPoolGroup', {
+      value: `${readUserPoolGroup.groupName}`,
+      description: 'Cognito user pool read-only group name.',
+      exportName: 'cognitoReadOnlyUserPoolGroup',
+    });
+    new CfnOutput(this, 'cognitoAdminUserSecretName', {
+      value: adminUsersecret.secretName,
+      description: 'Admin user secret manager secret name.',
+      exportName: 'cognitoAdminUserSecretName',
+    });
+    new CfnOutput(this, 'cognitoReadOnlyUserSecretName', {
+      value: readOnlyUsersecret.secretName,
+      description: 'Read-only user secret manager secret name.',
+      exportName: 'cognitoReadOnlyUserSecretName',
     });
     
 

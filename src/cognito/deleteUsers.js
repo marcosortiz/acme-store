@@ -4,8 +4,8 @@ import {
     CognitoIdentityProviderClient, AdminDeleteUserCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 
-const REGION = config.get("aws.REGION");
-const USER_POOL_ID = config.get("cognito.USER_POOL_ID");
+const REGION = config.get("aws.region");
+const USER_POOL_ID = config.get("cognito.userPoolId");
 
 // a client can be shared by different commands.
 const client = new CognitoIdentityProviderClient({ region: REGION });
@@ -23,8 +23,8 @@ async function deleteUser(username) {
     }
 }
 
-let adminUsername = config.get("users.admin.username");
-let readOnlyUsername = config.get("users.readonly.username");
+let adminUsername = 'Admin';
+let readOnlyUsername = 'readOnly';
 await deleteUser(adminUsername);
 await deleteUser(readOnlyUsername);
 

@@ -1,4 +1,5 @@
 import { Amplify, Auth, API } from 'aws-amplify';
+import { SecretsManagerClient, GetSecretValueCommand} from '@aws-sdk/client-secrets-manager';
 import config from 'config';
 const REGION = config.get("aws.region");
 const USER_POOL_ID = config.get("cognito.userPoolId");
@@ -6,6 +7,7 @@ const CLIENT_ID = config.get("cognito.ClientId");
 const IDENTITY_POOL_ID = config.get("cognito.identityPoolId");
 const API_ENDPOINT = config.get("api.endpoint");
 
+const smClient = new SecretsManagerClient({ region: REGION });
 
 Amplify.configure({
   Auth: {
@@ -23,13 +25,25 @@ Amplify.configure({
         custom_header: async () => { 
           // return { Authorization : 'token' } 
           // Alternatively, with Cognito User Pools use this:
-          return { Authorization: `Bearer ${(await Auth.currentSession()).getAccessToken().getJwtToken()}` }
-          // return { Authorization: `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}` }
+          // return { Authorization: `Bearer ${(await Auth.currentSession()).getAccessToken().getJwtToken()}` }
+          return { Authorization: `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}` }
         }
       }
     ]
   }
 });
+
+async function getSecretValue(secretName) {
+  try {
+      const command = new GetSecretValueCommand({
+          SecretId: secretName,
+      });
+      const response = await smClient.send(command);
+      return response.SecretString;
+  } catch (error) {
+      console.log('error getting user password', error);
+  }
+}
 
 async function signIn(username, password) {
   try {
@@ -68,13 +82,12 @@ function sendApiGetRequest(path) {
 
 async function acmeStoreGet(path) {
   try{
-    console.log(`Getting ${path} ...`)
     const resp = await sendApiGetRequest(path);
-    console.log(resp);
+    console.error(`Cetting ${path}: 200 (OK)`);
   } catch (err) {
     let code = err.response.status;
     let text = err.response.statusText;
-    console.error(`Error getting ${path}: ${code} - ${text}`);
+    console.error(`Getting ${path}: ${code} (${text})`);
   }
 }
 
@@ -86,15 +99,15 @@ async function getOrders() {
   await acmeStoreGet('/orders'); 
 }
 
-let adminUsername = config.get("users.admin.username");
-let adminUserPassword = config.get("users.admin.password");
+let adminUsername = 'Admin';
+let adminUserPassword = await getSecretValue(config.get('cognito.adminUserSecretName'));
 await signIn(adminUsername, adminUserPassword);
 await getDeals();
 await getOrders();
 await signOut(adminUsername);
 console.log('--------------------------------------------------------------------------------');
-let readOnlyUsername = config.get("users.readonly.username");
-let readOnlyUserPassword = config.get("users.readonly.password");
+let readOnlyUsername = 'readOnly';
+let readOnlyUserPassword = await getSecretValue(config.get('cognito.readOnlyUserSecretName'));
 await signIn(readOnlyUsername, readOnlyUserPassword);
 await getDeals();
 await getOrders();

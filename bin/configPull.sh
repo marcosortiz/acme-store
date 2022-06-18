@@ -13,6 +13,10 @@ AURORA_SECRET=$(echo $CFN_OUTPUT | jq -r '.Stacks[].Outputs[] | select(.OutputKe
 COGNITO_IDENTITY_POOL=$(echo $CFN_OUTPUT | jq -r '.Stacks[].Outputs[] | select(.OutputKey=="cognitoIdentityPoolId").OutputValue')
 COGNITO_USER_POOL_ID=$(echo $CFN_OUTPUT | jq -r '.Stacks[].Outputs[] | select(.OutputKey=="cognitoUserPoolId").OutputValue')
 COGNITO_CLIENT_ID=$(echo $CFN_OUTPUT | jq -r '.Stacks[].Outputs[] | select(.OutputKey=="cognitoClientId").OutputValue')
+COGNITO_ADMIN_GROUP=$(echo $CFN_OUTPUT | jq -r '.Stacks[].Outputs[] | select(.OutputKey=="cognitoAdminUserPoolGroup").OutputValue')
+COGNITO_READONLY_GROUP=$(echo $CFN_OUTPUT | jq -r '.Stacks[].Outputs[] | select(.OutputKey=="cognitoReadOnlyUserPoolGroup").OutputValue')
+COGNITO_ADMIN_SECRET_NAME=$(echo $CFN_OUTPUT | jq -r '.Stacks[].Outputs[] | select(.OutputKey=="cognitoAdminUserSecretName").OutputValue')
+COGNITO_READONLY_SECRET_NAME=$(echo $CFN_OUTPUT | jq -r '.Stacks[].Outputs[] | select(.OutputKey=="cognitoReadOnlyUserSecretName").OutputValue')
 API_ENDPOINT=$(echo $CFN_OUTPUT | jq -r '.Stacks[].Outputs[] | select(.OutputKey=="apiEndpoint").OutputValue')
 
 # Writing config file
@@ -23,6 +27,10 @@ jq --null-input \
   --arg cognitoIdentityPool $COGNITO_IDENTITY_POOL \
   --arg cognitouserPool $COGNITO_USER_POOL_ID \
   --arg cognitoClientId $COGNITO_CLIENT_ID \
+  --arg cognitoAdminUserPoolGroup $COGNITO_ADMIN_GROUP \
+  --arg cognitoReadOnlyUserPoolGroup $COGNITO_READONLY_GROUP \
+  --arg cognitoAdminUserSecretName $COGNITO_ADMIN_SECRET_NAME \
+  --arg cognitoReadOnlyUserSecretName $COGNITO_READONLY_SECRET_NAME \
   --arg apiEndpoint $API_ENDPOINT \
 '{
     "aws": {
@@ -35,6 +43,10 @@ jq --null-input \
       "userPoolId": $cognitouserPool,
       "ClientId": $cognitoClientId,
       "identityPoolId": $cognitoIdentityPool, 
+      "adminGroup": $cognitoAdminUserPoolGroup,
+      "readOnlyGroup": $cognitoReadOnlyUserPoolGroup,
+      "adminUserSecretName": $cognitoAdminUserSecretName,
+      "readOnlyUserSecretName": $cognitoReadOnlyUserSecretName
     },
     "aurora": {
       "endpoint": $auroraEndpoint, 
