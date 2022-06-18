@@ -7,9 +7,13 @@ mkdir -p $mydir/../config
 STACKNAME=${1:-AcmeStoreCdkStack}
 echo "Fetching $STACKNAME stack outputs ..."
 CFN_OUTPUT=$(aws cloudformation describe-stacks --stack-name $STACKNAME --output json)
-AURORA_ENDPOINT=$(echo $CFN_OUTPUT | jq -r '.Stacks[].Outputs[] | select(.OutputKey=="auroraClusterEndpoint").OutputValue')
-AURORA_PORT=$(echo $CFN_OUTPUT | jq -r '.Stacks[].Outputs[] | select(.OutputKey=="auroraClusterPort").OutputValue')
 AURORA_SECRET=$(echo $CFN_OUTPUT | jq -r '.Stacks[].Outputs[] | select(.OutputKey=="auroraSecret").OutputValue')
+echo "Fetching aurora secrets ..."
+AURORA_SECRET_VALUE=$(aws secretsmanager get-secret-value --secret-id $AURORA_SECRET | jq -r '.SecretString' | jq '.')
+AURORA_HOST=$(echo $AURORA_SECRET_VALUE | jq -r '.host')
+AURORA_PORT=$(echo $AURORA_SECRET_VALUE | jq -r '.port')
+AURORA_USERNAME=$(echo $AURORA_SECRET_VALUE | jq -r '.username')
+AURORA_PASSWORD=$(echo $AURORA_SECRET_VALUE | jq -r '.password')
 COGNITO_IDENTITY_POOL=$(echo $CFN_OUTPUT | jq -r '.Stacks[].Outputs[] | select(.OutputKey=="cognitoIdentityPoolId").OutputValue')
 COGNITO_USER_POOL_ID=$(echo $CFN_OUTPUT | jq -r '.Stacks[].Outputs[] | select(.OutputKey=="cognitoUserPoolId").OutputValue')
 COGNITO_CLIENT_ID=$(echo $CFN_OUTPUT | jq -r '.Stacks[].Outputs[] | select(.OutputKey=="cognitoClientId").OutputValue')
@@ -21,8 +25,10 @@ API_ENDPOINT=$(echo $CFN_OUTPUT | jq -r '.Stacks[].Outputs[] | select(.OutputKey
 
 # Writing config file
 jq --null-input \
-  --arg auroraEndpoint $AURORA_ENDPOINT \
+  --arg auroraHost $AURORA_HOST \
   --arg auroraPort $AURORA_PORT \
+  --arg auroraUsername $AURORA_USERNAME \
+  --arg auroraPassword $AURORA_PASSWORD \
   --arg auroraSecret $AURORA_SECRET \
   --arg cognitoIdentityPool $COGNITO_IDENTITY_POOL \
   --arg cognitouserPool $COGNITO_USER_POOL_ID \
@@ -49,9 +55,10 @@ jq --null-input \
       "readOnlyUserSecretName": $cognitoReadOnlyUserSecretName
     },
     "aurora": {
-      "endpoint": $auroraEndpoint, 
+      "host": $auroraHost, 
       "port": $auroraPort, 
-      "secret": $auroraSecret
+      "username": $auroraUsername,
+      "password": $auroraPassword
     }
 }' \
 > $CONFIG_PATH/default.json
