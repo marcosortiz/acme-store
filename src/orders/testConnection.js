@@ -1,5 +1,5 @@
 import config from 'config';
-import { Sequelize, Model, DataTypes } from 'sequelize'
+import { Sequelize } from 'sequelize'
 
 const HOST     = config.get("aurora.host");
 const PORT     = config.get("aurora.port");
@@ -13,7 +13,7 @@ const sequelize = new Sequelize(`postgres://${USERNAME}:${PASSWORD}@${HOST}:${PO
 
 try {
   await sequelize.authenticate();
-  console.log('Connection has been established successfully.');
+  console.log(`Successfully connected to postgres.`);
 } catch (error) {
   console.error('Unable to connect to the database:', error);
 } finally {
