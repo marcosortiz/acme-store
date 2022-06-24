@@ -1,22 +1,22 @@
 {
-  "name": "orderprocessor",
+  "name": "acme_store_orders",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "db:create": "./bin/db/create.sh",
+    "db:drop": "./bin/db/drop.sh",
+    "db:migrate": "node-pg-migrate up",
+    "db:rollback": "node-pg-migrate down"
   },
   "author": "",
   "license": "ISC",
-  "type": "module",
   "dependencies": {
     "axios": "^0.27.2",
     "config": "^3.3.7",
     "express": "^4.18.1",
-    "pg": "^8.7.3",
-    "sequelize": "^6.21.0"
-  },
-  "devDependencies": {
-    "sequelize-cli": "^6.4.1"
+    "node-pg-migrate": "^6.2.1",
+    "pg": "^8.7.3"
   }
 }
