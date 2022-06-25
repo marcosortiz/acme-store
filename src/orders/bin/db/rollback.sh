@@ -10,4 +10,4 @@ export PGPASSWORD=$(echo $DB_CONFIG | jq -r '.password')
 export PGDATABASE=postgres
 export DB_NAME=$(echo $DB_CONFIG | jq -r '.database')
 
-$mydir/../../node_modules/node-pg-migrate/bin/node-pg-migrate up
+$mydir/../../node_modules/node-pg-migrate/bin/node-pg-migrate down

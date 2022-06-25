@@ -7,8 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "db:create": "./bin/db/create.sh",
     "db:drop": "./bin/db/drop.sh",
-    "db:migrate": "node-pg-migrate up",
-    "db:rollback": "node-pg-migrate down"
+    "db:migrate": "./bin/db/migrate.sh",
+    "db:rollback": "./bin/db/rollback.sh"
   },
   "author": "",
   "license": "ISC",
