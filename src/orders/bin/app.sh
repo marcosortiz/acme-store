@@ -1,6 +1,6 @@
 #!/bin/bash
 mydir="${0%/*}"
-CONFIG_FILE=$mydir/../../config/default.json
+CONFIG_FILE=$mydir/../config/default.json
 
 export DB_CONFIG=$(cat $CONFIG_FILE | jq '.db')
 export PGHOST=$(echo $DB_CONFIG | jq -r '.host')
@@ -9,4 +9,4 @@ export PGUSER=$(echo $DB_CONFIG | jq -r '.username')
 export PGPASSWORD=$(echo $DB_CONFIG | jq -r '.password')
 export PGDATABASE=$(echo $DB_CONFIG | jq -r '.database')
 
-$mydir/../../node_modules/node-pg-migrate/bin/node-pg-migrate down
+node $mydir/../app.js

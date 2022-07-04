@@ -7,7 +7,6 @@ export PGHOST=$(echo $DB_CONFIG | jq -r '.host')
 export PGPORT=$(echo $DB_CONFIG | jq -r '.port')
 export PGUSER=$(echo $DB_CONFIG | jq -r '.username')
 export PGPASSWORD=$(echo $DB_CONFIG | jq -r '.password')
-export PGDATABASE=postgres
-export DB_NAME=$(echo $DB_CONFIG | jq -r '.database')
+export PGDATABASE=$(echo $DB_CONFIG | jq -r '.database')
 
 $mydir/../../node_modules/node-pg-migrate/bin/node-pg-migrate up
