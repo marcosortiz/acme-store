@@ -8,6 +8,7 @@
     "db:drop": "./bin/db/drop.sh",
     "db:migrate": "./bin/db/migrate.sh",
     "db:rollback": "./bin/db/rollback.sh",
+    "config:pull": "./bin/config/pull.sh",
     "server:start": "./bin/app.sh"
   },
   "author": "",

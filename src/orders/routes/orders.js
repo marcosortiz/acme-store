@@ -14,7 +14,8 @@ router.get('/', async (req, res) => {
     });  
   } catch (err) {
     console.error(`Error while getting orders: `, err.message);
-    console.err(err.stack);
+    console.error(err.stack);
+    throw(err);
   }
 });
 
@@ -43,6 +44,7 @@ router.delete('/:id', async (req, res) => {
   } catch (err) {
     console.error(`Error while deleting order: `, err.message);
     console.error(err.stack);
+    throw(err);
   }
 });
 
