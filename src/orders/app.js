@@ -1,7 +1,9 @@
-const express = require('express')
-const mountRoutes = require('./routes')
+const express = require('express');
+const mountRoutes = require('./routes');
 
-const app = express()
+const app = express();
+app.use(express.json());
+app.use(express.urlencoded({extended: true}));
 mountRoutes(app)
 
 // Setting the server to listen at port 3000

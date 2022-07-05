@@ -4,11 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "db:create": "./bin/db/create.sh",
     "db:drop": "./bin/db/drop.sh",
     "db:migrate": "./bin/db/migrate.sh",
-    "db:rollback": "./bin/db/rollback.sh"
+    "db:rollback": "./bin/db/rollback.sh",
+    "server:start": "./bin/app.sh"
   },
   "author": "",
   "license": "ISC",
