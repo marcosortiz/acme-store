@@ -16,7 +16,7 @@ async function getOrders(page = 1, max=10) {
     }
 }
 
-async function getOrdersByUser(username, page = 1, max=10) {
+async function getOrdersByUsername(username, page = 1, max=10) {
   const offset = helper.getOffset(page, max);
   const rows = await db.query(
       'SELECT id, username, details, created_at \
@@ -32,6 +32,21 @@ async function getOrdersByUser(username, page = 1, max=10) {
   return {
       data,
       meta
+  }
+}
+
+async function getOrderById(orderId) {
+  const result = await db.query(
+      'SELECT id, username, details, created_at \
+      FROM orders \
+      WHERE id = $1',
+      [orderId]
+  );
+
+  if(result.length == 1) {
+    return result[0];
+  } else {
+    throw new Error('Order with provided id not found.');
   }
 }
 
@@ -61,7 +76,8 @@ async function createOrder(username, details) {
 
 module.exports = {
   getOrders,
-  getOrdersByUser,
+  getOrdersByUsername,
+  getOrderById,
   createOrder,
   deleteOrder
 }

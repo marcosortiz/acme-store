@@ -62,14 +62,26 @@ export class CdkStack extends Stack {
     //-------------------------------------------------------------------------
     // Orders service
     //-------------------------------------------------------------------------
+    const dbUsername = secretsmanager.Secret.fromSecretNameV2(this, 'username', `${auroraCluster.secret?.secretName}`);
+    const dbPassword = secretsmanager.Secret.fromSecretNameV2(this, 'password', `${auroraCluster.secret?.secretName}`);
+
     const ordersService = new ecs_patterns.NetworkLoadBalancedFargateService(this, 'Orders', {
       cluster: cluster,
       memoryLimitMiB: 1024,
       cpu: 512,
       desiredCount: 2, // Default is 1
       taskImageOptions: {
-        image: ecs.ContainerImage.fromAsset("/Users/ormarcos/dev/aws-containers-labs/src/orders/"),
-        containerPort: 3000 
+        image: ecs.ContainerImage.fromAsset("../src/orders/"),
+        containerPort: 3000,
+        environment: {
+          PGHOST: auroraCluster.clusterEndpoint.hostname,
+          PGPORT: auroraCluster.clusterEndpoint.port.toString(),
+          PGDATABASE: "acme_store_orders",
+        },
+        secrets: {
+          PGUSER: ecs.Secret.fromSecretsManager(dbUsername, 'username'),
+          PGPASSWORD: ecs.Secret.fromSecretsManager(dbPassword, 'password'),
+        }
       },
       publicLoadBalancer: false // Default is false
     });
@@ -79,6 +91,7 @@ export class CdkStack extends Stack {
     ordersService.service.connections.securityGroups[0].addIngressRule(
       ec2.Peer.ipv4('10.0.0.0/16'), ec2.Port.tcp(3000), 'NLB'
     );
+    auroraCluster.connections.allowFrom(ordersService.service.connections.securityGroups[0], ec2.Port.tcp(5432));
 
 
     //-------------------------------------------------------------------------
@@ -90,7 +103,7 @@ export class CdkStack extends Stack {
       cpu: 512,
       desiredCount: 2, // Default is 1
       taskImageOptions: {
-        image: ecs.ContainerImage.fromAsset("/Users/ormarcos/dev/aws-containers-labs/src/deals/"),
+        image: ecs.ContainerImage.fromAsset("../src/deals/"),
         containerPort: 3000 
       },
       publicLoadBalancer: false // Default is false
@@ -184,7 +197,7 @@ export class CdkStack extends Stack {
 
 
     //-------------------------------------------------------------------------
-    // Acme Bots API
+    // Acme Store API
     //-------------------------------------------------------------------------
     const ordersIntegration = new HttpNlbIntegration('OrdersIntegration', ordersService.listener);
     const dealsIntegration = new HttpNlbIntegration('DealsIntegration', dealsService.listener);
@@ -217,6 +230,12 @@ export class CdkStack extends Stack {
     httpApi.addRoutes({
       path: '/orders/{orderID}',
       methods: [ apigateway.HttpMethod.GET ],
+      integration: ordersIntegration,
+      authorizationScopes: [adminScope],
+    });
+    httpApi.addRoutes({
+      path: '/orders/{orderID}',
+      methods: [ apigateway.HttpMethod.DELETE ],
       integration: ordersIntegration,
       authorizationScopes: [adminScope],
     });

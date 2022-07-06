@@ -19,6 +19,21 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/:id', async (req, res) => {
+  try{
+    const id = parseInt(req.params.id)
+    let order = await Order.getOrderById(id);
+    res.json({
+      data: order,
+      meta: req.az
+    });
+  } catch (err) {
+    console.error(`Error while getting order: `, err.message);
+    console.error(err.stack);
+    throw(err);
+  }
+});
+
 router.post('/', async (req, res) => {
   try{
     let order = await Order.createOrder(req.body.username, req.body.details);
