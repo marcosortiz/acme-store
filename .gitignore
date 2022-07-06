@@ -67,3 +67,6 @@ Temporary Items
 
 # Acme Store config folder
 config/
+
+# VSCode settings
+.vscode
