@@ -1,5 +1,5 @@
 const express = require('express');
-const mountRoutes = require('./routes');
+const mountRoutes = require('./src/routes');
 
 const app = express();
 app.use(express.json());

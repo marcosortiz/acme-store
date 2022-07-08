@@ -2,7 +2,7 @@
   "name": "acme_store_orders",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "./app.js",
   "scripts": {
     "db:create": "./bin/db/create.sh",
     "db:drop": "./bin/db/drop.sh",
