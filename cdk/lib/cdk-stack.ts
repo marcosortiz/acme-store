@@ -71,7 +71,7 @@ export class CdkStack extends Stack {
       cpu: 512,
       desiredCount: 2, // Default is 1
       taskImageOptions: {
-        image: ecs.ContainerImage.fromAsset("../src/orders/"),
+        image: ecs.ContainerImage.fromAsset("../services/orders/"),
         containerPort: 3000,
         environment: {
           PGHOST: auroraCluster.clusterEndpoint.hostname,
@@ -103,7 +103,7 @@ export class CdkStack extends Stack {
       cpu: 512,
       desiredCount: 2, // Default is 1
       taskImageOptions: {
-        image: ecs.ContainerImage.fromAsset("../src/deals/"),
+        image: ecs.ContainerImage.fromAsset("../services/deals/"),
         containerPort: 3000 
       },
       publicLoadBalancer: false // Default is false
@@ -124,7 +124,7 @@ export class CdkStack extends Stack {
     //   cpu: 256,
     // });
     // const orderBotContainer = orderBotTaskDefinition.addContainer("orderBot", {
-    //   image: ecs.ContainerImage.fromAsset("/Users/ormarcos/dev/aws-containers-labs/src/bots/orders"),
+    //   image: ecs.ContainerImage.fromAsset("/Users/ormarcos/dev/aws-containers-labs/services/bots/orders"),
     //   logging: new ecs.AwsLogDriver({
     //     streamPrefix: 'orderBot'
     //   })
@@ -143,7 +143,7 @@ export class CdkStack extends Stack {
     //   cpu: 256,
     // });
     // const dealBotContainer = dealBotTaskDefinition.addContainer("dealBot", {
-    //   image: ecs.ContainerImage.fromAsset("/Users/ormarcos/dev/aws-containers-labs/src/bots/deals"),
+    //   image: ecs.ContainerImage.fromAsset("/Users/ormarcos/dev/aws-containers-labs/services/bots/deals"),
     //   logging: new ecs.AwsLogDriver({
     //     streamPrefix: 'dealBot'
     //   })
@@ -191,7 +191,7 @@ export class CdkStack extends Stack {
     const preTokenAuthLambdaFn = new lambda.Function(this, 'AcmeStorePreTokenAuth', {
       runtime: lambda.Runtime.NODEJS_16_X,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '..', '..', 'src', 'preAuthTriggerLambda')),
+      code: lambda.Code.fromAsset(path.join(__dirname, '..', '..', 'services', 'preAuthTriggerLambda')),
     });
     userPool.addTrigger(cognito.UserPoolOperation.PRE_TOKEN_GENERATION, preTokenAuthLambdaFn);
 
