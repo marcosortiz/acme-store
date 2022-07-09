@@ -115,26 +115,6 @@ export class CdkStack extends Stack {
       ec2.Peer.ipv4('10.0.0.0/16'), ec2.Port.tcp(3000), 'NLB'
     );
 
-
-    // //
-    // // Order Bot Service
-    // //
-    // const orderBotTaskDefinition = new ecs.FargateTaskDefinition(this, 'orderBot', {
-    //   memoryLimitMiB: 512,
-    //   cpu: 256,
-    // });
-    // const orderBotContainer = orderBotTaskDefinition.addContainer("orderBot", {
-    //   image: ecs.ContainerImage.fromAsset("/Users/ormarcos/dev/aws-containers-labs/services/bots/orders"),
-    //   logging: new ecs.AwsLogDriver({
-    //     streamPrefix: 'orderBot'
-    //   })
-    // });
-    // const orderBotService = new ecs.FargateService(this, 'orderBotService', {
-    //   cluster: cluster,
-    //   taskDefinition: orderBotTaskDefinition,
-    //   desiredCount: 1,
-    // });
-
     // //
     // // Deal Bot Service
     // //
@@ -259,6 +239,37 @@ export class CdkStack extends Stack {
       path: '/deals',
       methods: [ apigateway.HttpMethod.POST ],
       integration: dealsIntegration
+    });
+
+    //
+    // Order Bot Service
+    //
+    const userPassword = secretsmanager.Secret.fromSecretNameV2(this, 'userPassword', adminUsersecret.secretName);
+    const orderBotTaskDefinition = new ecs.FargateTaskDefinition(this, 'orderBot', {
+      memoryLimitMiB: 512,
+      cpu: 256,
+    });
+    const orderBotContainer = orderBotTaskDefinition.addContainer("orderBot", {
+      image: ecs.ContainerImage.fromAsset("../services/bots/orders"),
+      environment: {
+        REGION: Stack.of(this).region,
+        ENDPOINT: httpApi.apiEndpoint,
+        USER_POOL_ID: userPool.userPoolId,
+        CLIENT_ID: cognitoAppClientId.userPoolClientId,
+        IDENTITY_POOL_ID: identityPool.identityPoolId,
+        USERNAME: 'Admin'
+      },
+      secrets: {
+        PASSWORD: ecs.Secret.fromSecretsManager(userPassword),
+      },
+      logging: new ecs.AwsLogDriver({
+        streamPrefix: 'orderBot'
+      })
+    });
+    const orderBotService = new ecs.FargateService(this, 'orderBotService', {
+      cluster: cluster,
+      taskDefinition: orderBotTaskDefinition,
+      desiredCount: 1,
     });
 
 
