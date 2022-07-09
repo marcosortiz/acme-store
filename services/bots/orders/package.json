@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "config:pull": "./bin/config/pull.sh",
+    "bot:start": "./bin/bot/start.sh"
   },
   "author": "",
   "license": "ISC",
