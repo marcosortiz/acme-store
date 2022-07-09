@@ -8,7 +8,10 @@
   },
   "author": "",
   "license": "ISC",
+  "type": "module",
   "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.121.0",
+    "aws-amplify": "^4.3.27",
     "axios": "^0.27.2"
   }
 }
