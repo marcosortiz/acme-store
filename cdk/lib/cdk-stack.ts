@@ -165,9 +165,19 @@ export class CdkStack extends Stack {
       precedence: 2,
     });
 
-    const adminUsersecret = new secretsmanager.Secret(this, 'adminUserSecret');
-    const readOnlyUsersecret = new secretsmanager.Secret(this, 'readOnlyUserSecret');
-
+    const adminUsersecret = new secretsmanager.Secret(this, 'AdminUser', {
+      generateSecretString: {
+        secretStringTemplate: JSON.stringify({ username: 'Admin' }),
+        generateStringKey: 'password',
+      },
+    });
+    const readOnlyUsersecret = new secretsmanager.Secret(this, 'ReadOnlyUser', {
+      generateSecretString: {
+        secretStringTemplate: JSON.stringify({ username: 'ReadOnly' }),
+        generateStringKey: 'password',
+      },
+    });
+    
     const preTokenAuthLambdaFn = new lambda.Function(this, 'AcmeStorePreTokenAuth', {
       runtime: lambda.Runtime.NODEJS_16_X,
       handler: 'index.handler',
@@ -241,10 +251,11 @@ export class CdkStack extends Stack {
       integration: dealsIntegration
     });
 
-    //
+    //-------------------------------------------------------------------------
     // Order Bot Service
-    //
-    const userPassword = secretsmanager.Secret.fromSecretNameV2(this, 'userPassword', adminUsersecret.secretName);
+    //-------------------------------------------------------------------------
+    // const userPassword = secretsmanager.Secret.fromSecretNameV2(this, 'userPassword', adminUsersecret.secretName);
+    const ordersBotUserSecret = secretsmanager.Secret.fromSecretNameV2(this, 'ordersBotUserSecret', adminUsersecret.secretName);
     const orderBotTaskDefinition = new ecs.FargateTaskDefinition(this, 'orderBot', {
       memoryLimitMiB: 512,
       cpu: 256,
@@ -257,10 +268,10 @@ export class CdkStack extends Stack {
         USER_POOL_ID: userPool.userPoolId,
         CLIENT_ID: cognitoAppClientId.userPoolClientId,
         IDENTITY_POOL_ID: identityPool.identityPoolId,
-        USERNAME: 'Admin'
       },
       secrets: {
-        PASSWORD: ecs.Secret.fromSecretsManager(userPassword),
+        USERNAME: ecs.Secret.fromSecretsManager(ordersBotUserSecret, 'username'),
+        PASSWORD: ecs.Secret.fromSecretsManager(ordersBotUserSecret, 'password'),
       },
       logging: new ecs.AwsLogDriver({
         streamPrefix: 'orderBot'

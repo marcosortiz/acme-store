@@ -67,17 +67,17 @@ async function addUserToGroup(username, group) {
     }
 }
 
-let adminUsername = 'Admin';
-let adminUserSecretName = config.get('cognito.adminUserSecretName');
-let adminUserPassword = await getSecretValue(adminUserSecretName);
+const adminSecret = JSON.parse(await getSecretValue(config.get('cognito.adminUserSecretName')));
+let adminUsername = adminSecret.username;
+let adminUserPassword = adminSecret.password;
 let adminGroup = config.get("cognito.adminGroup");
 await createUser(adminUsername);
 await setUserPassword(adminUsername, adminUserPassword);
 await addUserToGroup(adminUsername, adminGroup);
 
-let readOnlyUsername = 'readOnly';
-let readOnlyUserSecretName = config.get('cognito.readOnlyUserSecretName');
-let readOnlyUserPassword = await getSecretValue(readOnlyUserSecretName);
+const readOnlySecret = JSON.parse(await getSecretValue(config.get('cognito.readOnlyUserSecretName')));
+let readOnlyUsername = readOnlySecret.username;
+let readOnlyUserPassword = readOnlySecret.password;
 let readOnlyGroup = config.get("cognito.readOnlyGroup");
 await createUser(readOnlyUsername);
 await setUserPassword(readOnlyUsername, readOnlyUserPassword);

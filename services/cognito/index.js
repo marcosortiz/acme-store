@@ -23,9 +23,6 @@ Amplify.configure({
         name: "AcmeStore",
         endpoint: API_ENDPOINT,
         custom_header: async () => { 
-          // return { Authorization : 'token' } 
-          // Alternatively, with Cognito User Pools use this:
-          // return { Authorization: `Bearer ${(await Auth.currentSession()).getAccessToken().getJwtToken()}` }
           return { Authorization: `Bearer ${(await Auth.currentSession()).getIdToken().getJwtToken()}` }
         }
       }
@@ -99,15 +96,18 @@ async function getOrders() {
   await acmeStoreGet('/orders'); 
 }
 
-let adminUsername = 'Admin';
-let adminUserPassword = await getSecretValue(config.get('cognito.adminUserSecretName'));
+const adminSecret = JSON.parse(await getSecretValue(config.get('cognito.adminUserSecretName')));
+const readOnlySecret = JSON.parse(await getSecretValue(config.get('cognito.readOnlyUserSecretName')));
+
+let adminUsername = adminSecret.username;
+let adminUserPassword = adminSecret.password;
 await signIn(adminUsername, adminUserPassword);
 await getDeals();
 await getOrders();
 await signOut(adminUsername);
 console.log('--------------------------------------------------------------------------------');
-let readOnlyUsername = 'readOnly';
-let readOnlyUserPassword = await getSecretValue(config.get('cognito.readOnlyUserSecretName'));
+let readOnlyUsername = readOnlySecret.username;
+let readOnlyUserPassword = readOnlySecret.password;
 await signIn(readOnlyUsername, readOnlyUserPassword);
 await getDeals();
 await getOrders();
