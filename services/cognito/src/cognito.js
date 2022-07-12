@@ -27,7 +27,7 @@ export async function signIn(username, password) {
     console.log(`Signing is as ${username} ...`)
     const user = await Auth.signIn(username, password);
   } catch (error) {
-    console.log('error signing in', error);
+    throw error
   }
 }
 
@@ -37,7 +37,7 @@ export async function signOut(username) {
     console.log(`Signing out as ${username} ...`)
     const user = await Auth.signOut(username);
   } catch (error) {
-    console.log('error signing out', error);
+    throw error
   }
 }
 
@@ -58,7 +58,7 @@ export async function deleteUser(username) {
     console.log(`Deleting ${username} user ...`);
     const response = await client.send(command);
   } catch (error) {
-    console.log('error deleting user', error);
+    throw error;
   }
 }
 
@@ -71,7 +71,7 @@ export async function createUser(username) {
       console.log(`Creating ${username} user ...`);
       const response = await client.send(command);
   } catch (error) {
-      console.log('error creating user', error);
+      throw error;
   }
 }
 
@@ -86,7 +86,7 @@ export async function setUserPassword(username, password) {
       console.log(`Setting ${username} password ...`);
       const response = await client.send(command);
   } catch (error) {
-      console.log('error setting user password', error);
+      throw error;
   }
 }
 
@@ -100,6 +100,6 @@ export async function addUserToGroup(username, group) {
       console.log(`Adding ${username} to ${group} group ...`);
       const response = await client.send(command);
   } catch (error) {
-      console.log('error adding user to group', error);
+      throw error;
   }
 }

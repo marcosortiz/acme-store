@@ -8,14 +8,21 @@ const readOnlySecret = JSON.parse(await getSecretValue(config.get('cognito.readO
 
 let adminUsername = adminSecret.username;
 let adminUserPassword = adminSecret.password;
-await signIn(adminUsername, adminUserPassword);
-await getDeals();
-await getOrders();
-await signOut(adminUsername);
-console.log('--------------------------------------------------------------------------------');
-let readOnlyUsername = readOnlySecret.username;
-let readOnlyUserPassword = readOnlySecret.password;
-await signIn(readOnlyUsername, readOnlyUserPassword);
-await getDeals();
-await getOrders();
-await signOut(readOnlyUsername);
+
+try {
+    await signIn(adminUsername, adminUserPassword);
+    await getDeals();
+    await getOrders();
+    await signOut(adminUsername);
+    console.log('--------------------------------------------------------------------------------');
+    let readOnlyUsername = readOnlySecret.username;
+    let readOnlyUserPassword = readOnlySecret.password;
+    await signIn(readOnlyUsername, readOnlyUserPassword);
+    await getDeals();
+    await getOrders();
+    await signOut(readOnlyUsername);
+} catch (error) {
+    if (error.name === 'UserNotFoundException') {
+        console.error(error.message);
+    }
+}
