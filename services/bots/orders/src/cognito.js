@@ -57,3 +57,7 @@ export async function refreshTokensIfNeeded() {
 export async function sendApiGetRequest(path) {
   return API.get('AcmeStore', path);
 }
+
+export async function sendApiPostRequest(path, params) {
+  return API.post('AcmeStore', path, params);
+}

@@ -1,11 +1,29 @@
+import { faker } from '@faker-js/faker';
 import { refreshTokensIfNeeded, signOut } from './cognito.js'
-import { getOrders } from './orders.js'
+import { getOrders, createOrder } from './orders.js'
 
 var intervals = []
 var intervalId;
 
+function createRandomOrder() {
+    const order = {
+        username: faker.internet.userName(),
+        details: {
+            customer: faker.name.findName(),
+            address: faker.address.streetAddress(),
+            city: faker.address.city(),
+            state: faker.address.state(),
+            zip: faker.address.zipCode(),
+            email: faker.internet.email(),
+            product: faker.commerce.product(),
+            price: parseFloat(faker.commerce.price())
+        }
+    };
+    return order;
+}
+
 function setConstantWork() {
-    // Every second, get stores
+    // 1 get orders per second
     intervalId = setInterval(function () {
         getOrders()
             .then(response => {
@@ -16,6 +34,20 @@ function setConstantWork() {
                 console.error(`Error getting orders: (${error}).`);
             })
     }, 1000);
+    intervals.push(intervalId);
+
+    // 5 orders created per second
+    intervalId = setInterval(function () {
+        let order = createRandomOrder();
+        createOrder(order)
+            .then(response => {
+                const az = response.meta.az;
+                console.log(`POST /orders served out of ${az}.`);
+            })
+            .catch(error => {
+                console.error(`Error getting orders: (${error}).`);
+            })
+    }, 200);
     intervals.push(intervalId);
 
     // Every 15 mins, refresh id and access tokens if needed
@@ -40,7 +72,7 @@ function setTerminationListeners(username) {
         signOut(username);
         process.exit();
     });
-    
+
     process.on('SIGINT', function () {
         console.log('SIGINT signal received.');
         console.log('Stopping constant work ...')
@@ -51,6 +83,7 @@ function setTerminationListeners(username) {
         process.exit();
     });
 }
+
 
 export function startBotWork(params) {
     setConstantWork();
