@@ -7,7 +7,7 @@ exports.up = pgm => {
   pgm.createTable('orders', {
     id: 'id',
     username: { type: 'varchar(100)', notNull: true },
-    details: { type: 'text', notNull: true },
+    details: { type: 'json', notNull: true },
     created_at: {
       type: 'timestamp',
       notNull: true,
