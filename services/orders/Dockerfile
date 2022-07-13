@@ -3,6 +3,7 @@ FROM amazonlinux:2
 # Install dependencies
 RUN yum -y update && \
  yum -y install curl && \
+ yum -y install jq && \
  curl -sL https://rpm.nodesource.com/setup_16.x | bash -
 
 RUN yum install -y nodejs
